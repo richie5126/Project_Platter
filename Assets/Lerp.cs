@@ -10,12 +10,16 @@ public class Lerp : MonoBehaviour {
     public Vector3 FixedOffset;
     public bool mouseControl = false;
 	void Start () {
-		
 	}
 	
 	// Update is called once per frame
     private Vector3 _pos = new Vector3();
+    void Update()
+    {
+        if (thing == null) thing = GameObject.Find("CRSplineTarget").transform;
+    }
 	void FixedUpdate () {
+        if (thing == null) return;
         transform.rotation = Quaternion.Lerp(transform.rotation, thing.rotation, SmoothOffset.w * Time.deltaTime);
 
         _pos.x = Mathf.Lerp(transform.position.x, thing.position.x + FixedOffset.x, SmoothOffset.x * Time.deltaTime);

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class ShipControl : MonoBehaviour {
+public class ShipControl : UnityEngine.Networking.NetworkBehaviour {
 
 	// Use this for initialization
     public float throttle = 3.0f;
@@ -20,10 +20,12 @@ public class ShipControl : MonoBehaviour {
     public ParticleSystem DustKickupParticleSystem;
     private ParticleSystem.EmissionModule dustValues;
     private ParticleSystem.EmissionModule thrustValues;
+    public Transform CameraOffset;
 
 	void Start () {
         _rb = GetComponent<Rigidbody>();
         if (DustKickupParticleSystem != null) dustValues = DustKickupParticleSystem.emission;
+        if (Camera.main.GetComponent<Lerp>() != null && isLocalPlayer && CameraOffset != null) Camera.main.GetComponent<Lerp>().thing = CameraOffset;
 	}
 
 	// Update is called once per frame
@@ -34,6 +36,8 @@ public class ShipControl : MonoBehaviour {
 
     void Update()
     {
+        if (!isLocalPlayer) return;
+
         if (Input.GetButtonDown("Cancel")) UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
 
         float thrustPSFactor = (Vector3.Dot(transform.forward, _rb.velocity) / maxVelocity) * 30.0f;
@@ -45,20 +49,27 @@ public class ShipControl : MonoBehaviour {
             thrustValues.rateOverTimeMultiplier = thrustPSFactor;
         }
     }
-	void FixedUpdate () {
+    void FixedUpdate()
+    {
         //_rb.AddForce(transform.up * 6.0f * Time.deltaTime);
-        _rb.AddForce(transform.forward * Input.GetAxis("LeftStickVertical") * throttle * _rb.mass * Time.deltaTime);
-        _rb.AddTorque(transform.up * Input.GetAxis("LeftStickHorizontal") * handling * 0.5f * _rb.mass * Time.deltaTime);
-        _rb.AddTorque(transform.forward * -Input.GetAxis("LeftStickHorizontal") * handling * 0.8f * _rb.mass * Time.deltaTime);
+        if (isLocalPlayer)
+        {
+            _rb.AddForce(transform.forward * Input.GetAxis("LeftStickVertical") * throttle * _rb.mass * Time.deltaTime);
+            _rb.AddTorque(transform.up * Input.GetAxis("LeftStickHorizontal") * handling * 0.5f * _rb.mass * Time.deltaTime);
+            _rb.AddTorque(transform.forward * -Input.GetAxis("LeftStickHorizontal") * handling * 0.8f * _rb.mass * Time.deltaTime);
 
 
-        _rb.AddForce(Camera.main.transform.right * Input.GetAxis("RightStickHorizontal") * throttle * 0.25f * _rb.mass * Time.deltaTime);
+
+            _rb.AddForce(Camera.main.transform.right * Input.GetAxis("RightStickHorizontal") * throttle * 0.25f * _rb.mass * Time.deltaTime);
+        }
 
         if (Physics.Raycast(transform.position, -transform.up, out hitResult, hoverHeight * 4.0f))
         {
-
-            if (Vector3.Angle(transform.up, hitResult.normal) >= maxPitch)
-                _rb.AddTorque(transform.forward * Input.GetAxis("Horizontal") * handling * 0.8f * _rb.mass * Time.deltaTime);
+            if (isLocalPlayer)
+            {
+                if (Vector3.Angle(transform.up, hitResult.normal) >= maxPitch)
+                    _rb.AddTorque(transform.forward * Input.GetAxis("Horizontal") * handling * 0.8f * _rb.mass * Time.deltaTime);
+            }
 
             float distanceMagnifiedForce = ((hoverHeight / 1.0f) / hitResult.distance);
 
