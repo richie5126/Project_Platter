@@ -14,12 +14,14 @@ public class ShipControl : UnityEngine.Networking.NetworkBehaviour {
     public float verticalStabilizationFactor = 10.0f;
     public float maxVelocity = 30.0f;
     public float maxPitch = 15.0f;
+
+	public float verticalMagneticForce = 10.0f;
     private Rigidbody _rb;
 
     public ParticleSystem[] thrusters;
     public ParticleSystem DustKickupParticleSystem;
     private ParticleSystem.EmissionModule dustValues;
-    private ParticleSystem.EmissionModule thrustValues;
+    private ParticleSystem.MainModule thrustValues;
     public Transform CameraOffset;
 
 	void Start () {
@@ -40,13 +42,13 @@ public class ShipControl : UnityEngine.Networking.NetworkBehaviour {
 
         if (Input.GetButtonDown("Cancel")) UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
 
-        float thrustPSFactor = (Vector3.Dot(transform.forward, _rb.velocity) / maxVelocity) * 30.0f;
+		float thrustPSFactor = (Vector3.Dot (transform.forward, _rb.velocity) / maxVelocity);
         _angleWGround = thrustPSFactor;
         for(int i = 0; i < thrusters.Length; ++i)
         {
             if (thrusters[i] == null) continue;
-            thrustValues = thrusters[i].emission;
-            thrustValues.rateOverTimeMultiplier = thrustPSFactor;
+			thrustValues = thrusters [i].main;
+			thrustValues.startColor = Color.white * thrustPSFactor;
         }
     }
     void FixedUpdate()
@@ -61,8 +63,10 @@ public class ShipControl : UnityEngine.Networking.NetworkBehaviour {
 
 
             _rb.AddForce(Camera.main.transform.right * Input.GetAxis("RightStickHorizontal") * throttle * 0.25f * _rb.mass * Time.deltaTime);
-        }
-
+		}
+		if (Physics.Raycast (transform.position, -transform.up, out hitResult, hoverHeight * 10.0f)) {
+			_rb.AddForce (-transform.up * verticalMagneticForce * Time.deltaTime);
+		}
         if (Physics.Raycast(transform.position, -transform.up, out hitResult, hoverHeight * 4.0f))
         {
             if (isLocalPlayer)
@@ -71,7 +75,7 @@ public class ShipControl : UnityEngine.Networking.NetworkBehaviour {
                     _rb.AddTorque(transform.forward * Input.GetAxis("Horizontal") * handling * 0.8f * _rb.mass * Time.deltaTime);
             }
 
-            float distanceMagnifiedForce = ((hoverHeight / 1.0f) / hitResult.distance);
+			float distanceMagnifiedForce = Mathf.Abs((hoverHeight / 1.0f) / hitResult.distance);
 
             //stabilizers
             _rb.AddTorque(transform.right * Vector3.SignedAngle(transform.up, hitResult.normal, transform.right) * hitResult.distance * stabilizationFactor * Time.deltaTime);
